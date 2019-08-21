@@ -24,10 +24,14 @@ function getLogin(){
 
 list($db, $prefix) = getLogin();
 
-file_put_contents("tracking.log", "Entered this routine: " . $prefix . "url: " . $_REQUEST['url'] . " text: " . $_REQUEST['text'] . " domain: " . $_SERVER['HTTP_HOST'], FILE_APPEND);
+$returning = isset($_COOKIE['sp_longterm'])?1:0;
 
-$sql = $db->prepare("INSERT into {$prefix}sp_analytics(whenrecorded, url, linktext, domain) values(now(), ?, ?, ?)");
-$sql->bind_param("sss", $_REQUEST['url'], $_REQUEST['text'], $_SERVER['HTTP_HOST']);
+file_put_contents("tracking.log", "Entered this routine: " . $prefix . "url: " . $_REQUEST['url'] . " text: " . $_REQUEST['text'] . " domain: " . $_SERVER['HTTP_HOST'] . " session id: " . $_COOKIE['sp_session'] . " returninguser: " . $returning, FILE_APPEND);
+
+setcookie('sp_longterm', '1', time()+60*60*24*90); //<-- set perm cookie, one year
+
+$sql = $db->prepare("INSERT into {$prefix}sp_analytics(whenrecorded, url, linktext, domain, sessionid, returninguser) values(now(), ?, ?, ?, ?, ?)");
+$sql->bind_param("ssssi", $_REQUEST['url'], $_REQUEST['text'], $_SERVER['HTTP_HOST'], $_COOKIE['sp_session'], $returning);
 $sql->execute();
 $sql->close();
 echo "Ok";

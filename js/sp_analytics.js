@@ -1,5 +1,5 @@
 jQuery(document).ready(function() {
-    jQuery('body').on('click', 'a', function() {
+    jQuery('body').on('click', 'a, button, .sp_track', function() {
         jQuery.ajax({
             url: "/sp_tracking.php",
             data: {

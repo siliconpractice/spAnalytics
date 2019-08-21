@@ -16,16 +16,17 @@ function add_sp_analytics() {
    wp_enqueue_script('sp_analytics_js', plugins_url('js/sp_analytics.js',__FILE__),array('jquery'),false,true); 
 }
 
+add_action('init', 'track_sp_analytics');
+
 function track_sp_analytics() {
     
-    $cid = 
-    
-    if (!isset($_COOKIE($cid)) {
-        setcookie('name', 'data', time()+60*15); //<-- temp cookie, 15 minutes
-    })
-    if (!isset($_COOKIE()) {
-      setcookie('name', 'data', time()+60*60*24*365); //<-- set perm cookie, one year 
-    })
+    if (isset($_COOKIE['sp_session'])) { //this is the session id that will be stored in the database. Ensure unique?
+        setcookie('sp_session', $_COOKIE['sp_session'], time()+60*15); //set new cookie for 15 minutes duration
+    } else {
+        setcookie('sp_session', uniqid("SESS", true), time()+60*15); //update current cookie time for new 15 min duration
+    }
+
+//setcookie('sp_longterm', '1', time()+60*60*24*90); //<-- set perm cookie, one year I think this should be set when a user first visits the site???
 }
 
 ?>
