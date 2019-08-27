@@ -22,29 +22,34 @@ function getLogin(){
   return false;
 }
 
-$urlFilter['javascript:void(0)'] = true;
-
 list($db, $prefix) = getLogin();
 
 $returning = isset($_COOKIE['sp_longterm'])?1:0;
 
+$urlFilter['javascript:void(0)'] = true;
+
 //file_put_contents("tracking.log", "Entered this routine: " . $prefix . "url: " . $_REQUEST['url'] . " text: " . $_REQUEST['text'] . " domain: " . $_SERVER['HTTP_HOST'] . " session id: " . $_COOKIE['sp_session'] . " returninguser: " . $returning, FILE_APPEND);
 
 setcookie('sp_longterm', '1', time()+60*60*24*90); //<-- set perm cookie, one year
-
-//if (!in_array($_REQUEST['url'], $urlFilter)) {
     
 if (!isset($urlFilter[$_REQUEST['url']])) {
     
-    file_put_contents("tracking.log", "Inside the if statement: " . $_REQUEST['url'], FILE_APPEND);
+    //file_put_contents("tracking.log", "Inside the if statement: " . $_REQUEST['url'], FILE_APPEND);
     
-    $sql = $db->prepare("INSERT into {$prefix}sp_analytics(whenrecorded, url, linktext, domain, sessionid, returninguser) values(now(), ?, ?, ?, ?, ?)");
-    $sql->bind_param("ssssi", $_REQUEST['url'], $_REQUEST['text'], $_SERVER['HTTP_HOST'], $_COOKIE['sp_session'], $returning);
+    $sql = $db->prepare("INSERT into {$prefix}sp_analytics(whenrecorded, linktext, domain, sessionid, returninguser) values(now(), ?, ?, ?, ?)");
+    $sql->bind_param("sssi", $_REQUEST['text'], $_SERVER['HTTP_HOST'], $_COOKIE['sp_session'], $returning);
     $sql->execute();
     $sql->close();
     echo "Ok";
     die();
 } else {
-    file_put_contents("tracking.log", "Inside the else statement: " . $_REQUEST['url'], FILE_APPEND);
+    //file_put_contents("tracking.log", "Inside the else statement: " . $_REQUEST['url'], FILE_APPEND);
+}
+
+function sp_analyse() {
+    $result = mysqli_query($db,"SELECT stuff FROM {$prefix}sp_analytics WHERE stuff");
+    while ($row = mysqli_fetch_array($result,MYSQLI_NUM)) { // $row[0] is formid and $row[1] is name 
+    } 
+    mysqli_free_result($result);
 }
 ?>
