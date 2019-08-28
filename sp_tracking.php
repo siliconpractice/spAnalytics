@@ -45,11 +45,4 @@ if (!isset($urlFilter[$_REQUEST['url']])) {
 } else {
     //file_put_contents("tracking.log", "Inside the else statement: " . $_REQUEST['url'], FILE_APPEND);
 }
-
-function sp_analyse() {
-    $result = mysqli_query($db,"SELECT stuff FROM {$prefix}sp_analytics WHERE stuff");
-    while ($row = mysqli_fetch_array($result,MYSQLI_NUM)) { // $row[0] is formid and $row[1] is name 
-    } 
-    mysqli_free_result($result);
-}
 ?>

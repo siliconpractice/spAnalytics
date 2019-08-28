@@ -40,5 +40,20 @@ jQuery(document).ready(function() {
                 type: data2
             }
         });
+        
+        jQuery('#analytics-report-btn').on('click', function() {
+            getReport();
+            
+        });
     });
+    
+    function getReport() {
+        jQuery.ajax({
+            url: "/sp_reporting.php",
+            success: function(data, status) {
+                console.log(data + "status: " + status);
+                jQuery('#analytics-report-content').text(data);
+            }
+        });
+    }
 });

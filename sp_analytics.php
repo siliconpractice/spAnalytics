@@ -25,7 +25,6 @@ function track_sp_analytics() {
     } else {
         setcookie('sp_session', uniqid("SESS", true), time()+60*15); //update current cookie time for new 15 min duration
     }
-
 //setcookie('sp_longterm', '1', time()+60*60*24*90); //<-- set perm cookie, one year I think this should be set when a user first visits the site???
 }
 
