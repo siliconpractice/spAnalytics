@@ -1,6 +1,10 @@
 jQuery(document).ready(function() {
 
     var formStarted = false;
+	
+	jQuery(window).unload(function() {
+//		#form was exited
+	});
     
     jQuery('body').on('click', 'a, button, .sp_track, .frm_forms, .triage_choice_box', function(e) {
 
@@ -12,6 +16,7 @@ jQuery(document).ready(function() {
             var formName = jQuery(this).find("form").attr('id'); //get name of form clicked in
             data1 = formName;
             data2 = "form";
+			console.log("Form clicked");
             
             if(jQuery(e.target).is("input")) {
                 formStarted = true; //form has been started
@@ -21,15 +26,17 @@ jQuery(document).ready(function() {
                 //clicked outside of an input
             }
         } else if(e.currentTarget.classList.contains("triage_choice_box")) {
+			console.log("Choice clicked");
             data1 = jQuery(this).find("span").text();
             data2 = "choice";
-        } else if(e.currentTarget.classList.contains(".sp_track")) {
+        } else if(e.currentTarget.classList.contains("sp_track")) {
+			console.log("Room clicked");
             data1 = jQuery(this).text();
             data2 = "room";
-        } else {
+        } else if( jQuery(e.currentTarget).is('a') && !e.currentTarget.classList.contains("sp_track")) {
+			console.log("Link clicked");
             data1 = jQuery(this).text(); //works for buttons, links.
             data2 = "link";
-            //data1 = "sp_track"; //What works for sp_track??? (e.g. rooms);
         }
         
         jQuery.ajax({
@@ -43,16 +50,20 @@ jQuery(document).ready(function() {
         
         jQuery('#analytics-report-btn').on('click', function() {
             getReport();
-            
         });
     });
     
     function getReport() {
         jQuery.ajax({
             url: "/sp_reporting.php",
+			dataType: "json",
             success: function(data, status) {
-                console.log(data + "status: " + status);
-                jQuery('#analytics-report-content').text(data);
+				
+                jQuery('#analytics-report-content').text("status: " + status);
+				
+				jQuery.each(data, function(key, value) {
+					console.log(key + value);
+				});
             }
         });
     }

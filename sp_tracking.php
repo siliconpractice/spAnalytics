@@ -28,16 +28,14 @@ $returning = isset($_COOKIE['sp_longterm'])?1:0;
 
 $urlFilter['javascript:void(0)'] = true;
 
-//file_put_contents("tracking.log", "Entered this routine: " . $prefix . "url: " . $_REQUEST['url'] . " text: " . $_REQUEST['text'] . " domain: " . $_SERVER['HTTP_HOST'] . " session id: " . $_COOKIE['sp_session'] . " returninguser: " . $returning, FILE_APPEND);
-
 setcookie('sp_longterm', '1', time()+60*60*24*90); //<-- set perm cookie, one year
     
 if (!isset($urlFilter[$_REQUEST['url']])) {
     
     //file_put_contents("tracking.log", "Inside the if statement: " . $_REQUEST['url'], FILE_APPEND);
     
-    $sql = $db->prepare("INSERT into {$prefix}sp_analytics(whenrecorded, linktext, domain, sessionid, returninguser) values(now(), ?, ?, ?, ?)");
-    $sql->bind_param("sssi", $_REQUEST['text'], $_SERVER['HTTP_HOST'], $_COOKIE['sp_session'], $returning);
+    $sql = $db->prepare("INSERT into {$prefix}sp_analytics(whenrecorded, url, linktext, type, domain, sessionid, returninguser) values(now(), ?, ?, ?, ?, ?, ?)");
+    $sql->bind_param("sssssi", $_REQUEST['url'], $_REQUEST['text'], $_REQUEST['type'], $_SERVER['HTTP_HOST'], $_COOKIE['sp_session'], $returning);
     $sql->execute();
     $sql->close();
     echo "Ok";

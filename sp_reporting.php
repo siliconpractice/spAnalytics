@@ -24,20 +24,21 @@ function getLogin(){
 
 list($db, $prefix) = getLogin();
 
-$result = mysqli_query($db,"SELECT whenrecorded, linktext, domain, sessionid, returninguser FROM {$prefix}sp_analytics");
+$result = mysqli_query($db,"SELECT whenrecorded, url, type, linktext, domain, sessionid, returninguser FROM {$prefix}sp_analytics");
 
 $countsPerDay = [
-    "PagesRetrieved"=>0,
-    "TotalSessions"=>0,
-    "UniqueUsers"=>0,
-    "Searches"=>0
+    "pagesRetrieved"=>0,
+    "totalSessions"=>0,
+    "uniqueUsers"=>0,
+    "searches"=>0
 ];
     
 $countsTotal = [
-    "NHSChoices"=>0,
-    "SelfRefer"=>0,
-    "IncompleteForms"=>0,
-    "Wellbeing"=>0
+	"rooms"=>[],
+	"externalLinks"=>0,
+    "nhsChoices"=>0,
+    "selfRefer"=>0,
+    "incompleteForms"=>0
 ];
 
 $sessions = [];
@@ -45,33 +46,45 @@ $html = "";
 
 //array filter for checking if text matches a certain type??
 
-while ($row = mysqli_fetch_array($result,MYSQLI_NUM)) { // $row[0] is formid and $row[1] is name 
-    list($when, $text, $domain, $session, $returning) = $row;
-    
-    file_put_contents("reporting.log", "Row is when: " . $when . " text: " . $text . " domain: " . $domain . " session: " . $session . " returning user: " . $returning, FILE_APPEND);
+while ($row = mysqli_fetch_array($result,MYSQLI_NUM)) {
+    list($when, $url, $type, $text, $domain, $session, $returning) = $row;
     
     if(!isset($sessions[$session])) {
         $sessions[$session] = 1;
     }
     
     if($returning === 0) {
-        $countsPerDay["UniqueUsers"]++;
+        $countsPerDay["uniqueUsers"]++;
     }
     
     if($text === "I would lke to request a referral") {
-        $countsTotal["SelfRefer"]++;
-    }    
+        $countsTotal["selfRefer"]++;
+    }
+	
+	//we're not recording page hits atm? links != hits
+	
+	//if its of link type and the url starts with a / or http or https
+	if($type === "link" && preg_match("!^(/|#|https?://(www)?)", $url)) { //this excludes anchors and nulls
+		
+		if(preg_match("!^(/|#|https?://(www)?{$_REQUEST['HTTP_HOST']})!", $url)) {
+			$parts = explode('/', $url);
+			$page = $parts[count($parts)];
+			//this will be an internal link
+		} else {
+			$countsTotal['externalLinks']++;
+		}
+	} else if($type === "room") { //deal with anchors and nulls or other types of link i.e. room.
+		if (!isset($countsTotal['rooms'][$text])) {
+			$countsTotal['rooms'][$text]++;
+		}
+	}
 }
 
-$countsPerDay["TotalSessions"] = count($sessions);
-
-$html .= "\n Number of pages retrieved: " . $countsPerDay["PagesRetrieved"];
-$html .= "\n Total sessions: " . $countsPerDay["TotalSessions"];
-$html .= "\n Total unique users" . $countsPerDay["UniqueUsers"];
-$html .= "\n Searches" . $countsPerDay["Searches"];
-$html .= "\n Self referrals" . $countsTotal["SelfRefer"];
-    
-echo $html;
-
 mysqli_free_result($result);
+
+$countsPerDay["totalSessions"] = count($sessions);
+
+$data = array($countsPerDay, $countsTotal);
+
+echo json_encode($data);
 ?>
