@@ -34,8 +34,8 @@ if (!isset($urlFilter[$_REQUEST['url']])) {
     
     //file_put_contents("tracking.log", "Inside the if statement: " . $_REQUEST['url'], FILE_APPEND);
     
-    $sql = $db->prepare("INSERT into {$prefix}sp_analytics(whenrecorded, url, linktext, type, domain, sessionid, returninguser) values(now(), ?, ?, ?, ?, ?, ?)");
-    $sql->bind_param("sssssi", $_REQUEST['url'], $_REQUEST['text'], $_REQUEST['type'], $_SERVER['HTTP_HOST'], $_COOKIE['sp_session'], $returning);
+    $sql = $db->prepare("INSERT into {$prefix}sp_analytics(whenrecorded, url, linktext, type, domain, sessionid, returninguser, parent) values(now(), ?, ?, ?, ?, ?, ?, ?)");
+    $sql->bind_param("sssssis", $_REQUEST['url'], $_REQUEST['text'], $_REQUEST['type'], $_SERVER['HTTP_HOST'], $_COOKIE['sp_session'], $returning, $_REQUEST['parent']);
     $sql->execute();
     $sql->close();
     echo "Ok";

@@ -26,65 +26,94 @@ list($db, $prefix) = getLogin();
 
 $result = mysqli_query($db,"SELECT whenrecorded, url, type, linktext, domain, sessionid, returninguser FROM {$prefix}sp_analytics");
 
-$countsPerDay = [
-    "pagesRetrieved"=>0,
-    "totalSessions"=>0,
-    "uniqueUsers"=>0,
-    "searches"=>0
-];
-    
-$countsTotal = [
-	"rooms"=>[],
-	"externalLinks"=>0,
-    "nhsChoices"=>0,
-    "selfRefer"=>0,
-    "incompleteForms"=>0
-];
-
-$sessions = [];
-$html = "";
+$countsPerDay = [];
+$left = [];
 
 //array filter for checking if text matches a certain type??
 
 while ($row = mysqli_fetch_array($result,MYSQLI_NUM)) {
     list($when, $url, $type, $text, $domain, $session, $returning) = $row;
     
-    if(!isset($sessions[$session])) {
-        $sessions[$session] = 1;
-    }
-    
-    if($returning === 0) {
-        $countsPerDay["uniqueUsers"]++;
-    }
-    
-    if($text === "I would lke to request a referral") {
-        $countsTotal["selfRefer"]++;
-    }
+	$date = substr($when, 0, 10);
+	   
+	if(!isset($countsPerDay[$date])) {
+		$countsPerDay[$date]=[
+			"uniqueUsers"=>0,
+			"sessions"=>[],
+			"summary"=>[]
+		];
+	}
 	
-	//we're not recording page hits atm? links != hits
-	
-	//if its of link type and the url starts with a / or http or https
-	if($type === "link" && preg_match("!^(/|#|https?://(www)?)", $url)) { //this excludes anchors and nulls
-		
-		if(preg_match("!^(/|#|https?://(www)?{$_REQUEST['HTTP_HOST']})!", $url)) {
-			$parts = explode('/', $url);
-			$page = $parts[count($parts)];
-			//this will be an internal link
-		} else {
-			$countsTotal['externalLinks']++;
-		}
-	} else if($type === "room") { //deal with anchors and nulls or other types of link i.e. room.
-		if (!isset($countsTotal['rooms'][$text])) {
-			$countsTotal['rooms'][$text]++;
+	//reassign 'type' for more specific information
+	if($type== 'link') {
+		if(preg_match("#^(/conditions/)#", $url)) {
+			//a conditon
+			$type = 'Self-help';
+		} else if (preg_match("!^(/|#|https?://(www)?)", $url)) { //its a link, not an anchor or null
+			echo "its a link";
+			if (!preg_match("!^(/|#|https?://(www)?{$_SERVER['HTTP_HOST']})!", $url)) { //its a link but not to the current domain
+				//external url
+				echo "its an external link";
+				$type = 'external';
+			}
 		}
 	}
+		
+	if(!isset($left[$type][$text])) {
+		$left[$type][$text]=1;
+	}		
+	$countsPerDay[$date]['summary'][$type][$text]++;
+	
+	/* Totals */
+    if(!isset($countsPerDay[$date]["sessions"][$session])) {
+        $countsPerDay[$date]["sessions"][$session] = 1;
+    }
+	
+    if($returning === 0) {
+		$countsPerDay[$date]["uniqueUsers"]++;
+    }
+
+//			$parts = explode('/', $url);
+//			$page = $parts[count($parts)];
+
 }
 
 mysqli_free_result($result);
 
-$countsPerDay["totalSessions"] = count($sessions);
+echo "<table><tr><td>";
 
-$data = array($countsPerDay, $countsTotal);
+foreach($countsPerDay as $key=>$value) {
+	echo "<td><strong>" . $key . "</strong>";
+}
 
-echo json_encode($data);
+echo "<tr><td><strong>Totals </strong><tr><td>Unique users";
+foreach($countsPerDay as $c) {
+	if($countsPerDay['uniqueUsers'] > 0) {
+		echo "<td>" . $c['uniqueUsers'];
+	} else {
+		echo "<td>0";
+	}
+}
+echo "<tr><td>Sessions";
+foreach($countsPerDay as $c) {
+	echo "<td>" . count($c['sessions']);
+}
+
+foreach($left as $lkey=>$lval) {
+	echo "<tr><td><strong>" . $lkey . "</strong>";
+	foreach($lval as $key => $val) {
+		echo "<tr><td>" . $key;
+		foreach($countsPerDay as $c) {
+			if (isset($c['summary'][$lkey][$key])) {
+				echo "<td>" . $c['summary'][$lkey][$key];	
+			} else {
+				echo "<td>0";
+			}
+		}
+	}
+}
+
+echo "</table>";
+
+//echo json_encode($countsPerDay);
 ?>
