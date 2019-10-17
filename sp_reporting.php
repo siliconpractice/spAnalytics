@@ -24,18 +24,27 @@ function getLogin(){
 
 list($db, $prefix) = getLogin();
 
-$result = mysqli_query($db,"SELECT whenrecorded, url, type, linktext, domain, sessionid, returninguser FROM {$prefix}sp_analytics");
+$result = mysqli_query($db,"SELECT whenrecorded, url, type, linktext, domain, sessionid, returninguser, parent FROM {$prefix}sp_analytics");
 
 $countsPerDay = [];
 $left = [];
+//$room = [];
+//$roomCounts = [];
 
 //array filter for checking if text matches a certain type??
 
 while ($row = mysqli_fetch_array($result,MYSQLI_NUM)) {
-    list($when, $url, $type, $text, $domain, $session, $returning) = $row;
+    list($when, $url, $type, $text, $domain, $session, $returning, $parent) = $row;
     
 	$date = substr($when, 0, 10);
 	   
+	
+	//check what room the link was clicked /from/
+	//make sure parent is not null, explode parent on /, get third part?
+	$parentExp = explode("/",$parent);
+	$parentRoom = $parentExp[4];
+	
+	
 	if(!isset($countsPerDay[$date])) {
 		$countsPerDay[$date]=[
 			"uniqueUsers"=>0,
@@ -45,26 +54,28 @@ while ($row = mysqli_fetch_array($result,MYSQLI_NUM)) {
 	}
 	
 	//reassign 'type' for more specific information
-	if($type== 'link') {
+	if($type == 'link') {
+		//is url null?
+		if(!$url == 'none') { //this is either a button or a div hence it has no url
+			
+		}
 		if(preg_match("#^(/conditions/)#", $url)) {
 			//a conditon
 			$type = 'Self-help';
-		} else if (preg_match("!^(/|#|https?://(www)?)", $url)) { //its a link, not an anchor or null
-			echo "its a link";
-			if (!preg_match("!^(/|#|https?://(www)?{$_SERVER['HTTP_HOST']})!", $url)) { //its a link but not to the current domain
-				//external url
-				echo "its an external link";
-				$type = 'external';
-			}
+		}
+		if(preg_match("!^(https?://(www)?)!", $url) && !preg_match("!^(https?://(www)?{$_SERVER['HTTP_HOST']})!", $url)) {
+			//external url
+			$type = 'External';
 		}
 	}
-		
+	
+	//Build the table row headings
 	if(!isset($left[$type][$text])) {
 		$left[$type][$text]=1;
 	}		
 	$countsPerDay[$date]['summary'][$type][$text]++;
 	
-	/* Totals */
+	//Totals
     if(!isset($countsPerDay[$date]["sessions"][$session])) {
         $countsPerDay[$date]["sessions"][$session] = 1;
     }
@@ -72,10 +83,6 @@ while ($row = mysqli_fetch_array($result,MYSQLI_NUM)) {
     if($returning === 0) {
 		$countsPerDay[$date]["uniqueUsers"]++;
     }
-
-//			$parts = explode('/', $url);
-//			$page = $parts[count($parts)];
-
 }
 
 mysqli_free_result($result);
