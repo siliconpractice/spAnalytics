@@ -52,6 +52,8 @@ jQuery(document).ready(function() {
 		
 		console.log(window.location.href);
         
+//		$link, $nowday, $nowmonth, $nowyear, $practice, $userid
+		
         jQuery.ajax({
             url: "/sp_tracking.php",
             data: {
@@ -66,66 +68,5 @@ jQuery(document).ready(function() {
             getReport();
         });
     });
-	
-    function getReport() {
-        jQuery.ajax({
-            url: "/sp_reporting.php",
-			dataType: "json",
-            success: function(data, status) {
-				console.log(data);
-				var tbl = jQuery('#analytics-report-content')[0];
-				
-				var datecounter = -1;
-				jQuery.each(data, function(akey, avalue) { //for each date...
-					var fieldcounter = -1;
-					datecounter++;
-					jQuery.each(avalue, function(bkey, bvalue) { //for each set of counts within a date (this is a COLUMN)
-						fieldcounter++;
-						addRow(tbl, bkey, bvalue, datecounter, fieldcounter);
-					});
-				});
-				addThead(tbl, data);
-            }
-        });
-    }
-	
-	function addRow(table, key, value, i, j) {
-		var row;
-		if (i == 0) { //if i = 0 then we are on the first date so make a new row for every item
-			row = table.insertRow();
-				var first = row.insertCell(0);
-				var firstVal = document.createTextNode(key);
-				first.appendChild(firstVal);
-		} else { //if i is more than 0 then its not a new row
-			row = table.rows[j];
 
-			var cell = row.insertCell(-1);
-			var text;
-
-			if (typeof value === 'object' && value !== null) {
-				
-				text = document.createTextNode("Object.");
-			} else {
-				text = document.createTextNode(value);
-			}
-			cell.appendChild(text);
-		}
-	}
-	
-	function addThead(table, data) {
-		
-		var thead = table.createTHead();
-		var row = thead.insertRow(0);
-		var thCorner = document.createElement("th");
-		var textCorner = document.createTextNode("Date: ");
-		thCorner.appendChild(textCorner);
-		row.appendChild(thCorner);
-		
-		jQuery.each(data, function(key, value) {
-			var th = document.createElement("th");
-			var text = document.createTextNode(key);
-			th.appendChild(text);
-			row.appendChild(th);
-		});
-	}
 });

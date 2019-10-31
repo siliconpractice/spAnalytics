@@ -1,5 +1,4 @@
 <?php
-
 /*
  * Plugin Name: SP Analytics
  * Description: Record analytics events
@@ -19,13 +18,15 @@ function add_sp_analytics() {
 add_action('init', 'track_sp_analytics');
 
 function track_sp_analytics() {
+	
+	$bytes = bin2hex(random_bytes(10));
     
-    if (isset($_COOKIE['sp_session'])) { //this is the session id that will be stored in the database. Ensure unique?
-        setcookie('sp_session', $_COOKIE['sp_session'], time()+60*15); //set new cookie for 15 minutes duration
+    if (isset($_COOKIE['sp_session'])) { 
+        setcookie('sp_session', $_COOKIE['sp_session'], time()+60*15);
     } else {
-        setcookie('sp_session', random_bytes(10), time()+60*15); //update current cookie time for new 15 min duration
+        setcookie('sp_session', $bytes, time()+60*15);
     }
-//setcookie('sp_longterm', '1', time()+60*60*24*90); //<-- set perm cookie, one year I think this should be set when a user first visits the site???
+//setcookie('sp_longterm', '1', time()+60*60*24*90); 
 }
 
 ?>
