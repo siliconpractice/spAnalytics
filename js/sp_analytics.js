@@ -7,66 +7,44 @@ jQuery(document).ready(function() {
 	});
     
     jQuery('body').on('click', 'a, button, .room, .sp_track, .frm_forms, .triage_choice_box, .consult-text-button', function(e) {
-
-        var data1; //identifier e.g. text or url
-        var data2; //type e.g. room
-		var data3; //parent
         
-        if(e.currentTarget.classList.contains("frm_forms")) { //if they've clicked anywhere in a form
+		//click on a form
+        if(e.currentTarget.classList.contains("frm_forms")) {
             
-            var formName = jQuery(this).find("form").attr('id'); //get name of form clicked in
-            data1 = formName;
-            data2 = "form";
-			data3 = "";
-			console.log("Form clicked");
+			//get name of form clicked in
+            var formName = jQuery(this).find("form").attr('id');
             
             if(jQuery(e.target).is("input")) {
-                formStarted = true; //form has been started
+                //form has been started
+				formStarted = true;
             } else if (jQuery(e.target).is("button[type='submit']")) {
-                formStarted = false; //form has been submitted, reset started variable
-            } else {
-                //clicked outside of an input
+                //form has been submitted, reset started variable
+				formStarted = false;
+				
+				//send stats for form
+				sendStats(formName + "_submit", window.location.href);
             }
-		} else if(e.currentTarget.classList.contains("room")) {
-            data1 = jQuery(this).text();
-            data2 = "room";
-//        } else if(e.currentTarget.classList.contains("triage_choice_box")) {
-//            data1 = jQuery(this).find("span").text();
-//            data2 = "triage choice";
-//		} else if(e.currentTarget.classList.contains("consult-text-button")) {
-//            data1 = jQuery(this).text();
-//            data2 = "room choice";
-//		} else if(jQuery(e.currentTarget).is('a') && !e.currentTarget.classList.contains("sp_track") && !e.currentTarget.classList.contains("triage_choice_box")) {
 		} else {
-            data1 = jQuery(this).text(); //works for divs, buttons, links.
-            data2 = "link";
-        }
-		
-		var url;
-		
-		if(jQuery(this).attr("href")) {
-			url = jQuery(this).attr("href");
-		} else {
-			url = "none";
+			sendStats(jQuery(this).text(), window.location.href);
 		}
 		
-		console.log(window.location.href);
-        
-//		$link, $nowday, $nowmonth, $nowyear, $practice, $userid
-		
-        jQuery.ajax({
-            url: "/sp_tracking.php",
-            data: {
-                text: data1, //either form name or link text
-                url: url,//this is useful for filtering
-                type: data2,
-				parent: window.location.href
-            }
-        });
-        
-        jQuery('#analytics-report-btn').on('click', function() {
-            getReport();
-        });
+		//e.currentTarget.classList.contains("room") -> its a room
+		//e.currentTarget.classList.contains("triage_choice_box") -> it's a triage choice
+		//e.currentTarget.classList.contains("consult-text-button") -> it's a consult text e.g. Pharmacy
+		//e.currentTarget.classList.contains("sp_track") -> it's a different thing
+
+		//strip spaces from start and end.
+		//ignore form clicks for purposes of click collection
     });
 
 });
+
+function sendStats(link, parent) {
+        jQuery.ajax({
+            url: "/sp_tracking.php",
+            data: {
+                text: link, //either form name or link text
+				parent: parent
+            }
+        });
+}
