@@ -27,7 +27,6 @@ function getLogin()
 
 function checkLink($link, $subcat, $cat)
 {
-    echo $link . $subcat . $cat;
     $category_id = "none";
     list($db, $prefix) = getLogin();
     $sql = "SELECT cat.category_id FROM {$prefix}sp_dim_category cat WHERE cat.link = ? && cat.sub_category = ? && cat.category = ? LIMIT 1";
@@ -35,9 +34,6 @@ function checkLink($link, $subcat, $cat)
     $statement->bind_param('sss', $link, $subcat, $cat);
     $statement->execute();
     $result = $statement->get_result();
-    if ($result->num_rows === 0) {
-        echo "no rows returned";
-    }
     while ($row = $result->fetch_assoc()) {
         $category_id = $row['category_id'];
         echo $category_id;
@@ -48,24 +44,17 @@ function checkLink($link, $subcat, $cat)
 
 function checkPractice($internal)
 {
+    $practice_id = "none";
     list($db, $prefix) = getLogin();
     $sql = "SELECT p.practice_id FROM {$prefix}sp_dim_practice p WHERE p.sp_shortcode = ? LIMIT 1";
     $statement = $db->prepare($sql);
     $statement->bind_param('s', $internal);
-    if ($statement->execute()) {
-            echo "Success";
-    } else {
-        echo "Error: " . $db->error;
-    }
-    $statement->store_result();
-    $num_rows = $statement->num_rows;
-    if ($num_rows==1) {
-        $statement->bind_result($practice_id);
-        $statement->fetch();
-    } else {
-        $practice_id = 'none';
-    }
-    $statement->free_result();
+    $statement->execute();
+    $result = $statement->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $practice_id = $row['practice_id'];
+        echo $practice_id;
+    };
     $statement->close();
     return $practice_id;
 }
