@@ -16,6 +16,8 @@ CREATE TABLE charlotter_sp_dim_practice(practice_id INT AUTO_INCREMENT PRIMARY K
 
 CREATE TABLE charlotter_sp_fact_clicks(click_id INT AUTO_INCREMENT PRIMARY KEY, category_id INT, calendar_id INT , practice_id INT, time_clicked TIMESTAMP, user_id VARCHAR(50) NOT NULL);
 
+CREATE TABLE charlotter_sp_fact_exits(exit_id INT AUTO_INCREMENT PRIMARY KEY, page VARCHAR(200), calendar_id INT, practice_id INT, time_exited TIMESTAMP, user_id VARCHAR(50) NOT NULL);
+
 #STORED PROCEDURE TO POPULATE DATE DIMENSION#
 DELIMITER $$
 

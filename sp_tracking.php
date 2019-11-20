@@ -29,7 +29,7 @@ function checkLink($link, $subcat, $cat)
 {
     $category_id = "none";
     list($db, $prefix) = getLogin();
-    $sql = "SELECT cat.category_id FROM {$prefix}sp_dim_category cat WHERE cat.link = ? && cat.sub_category = ? && cat.category = ? LIMIT 1";
+    $sql = "SELECT cat.category_id FROM {$prefix}sp_dim_category cat WHERE cat.link = ? AND cat.sub_category = ? AND cat.category = ? LIMIT 1";
     $statement = $db->prepare($sql);
     $statement->bind_param('sss', $link, $subcat, $cat);
     $statement->execute();
@@ -76,57 +76,70 @@ function getInternal()
     return $internal;
 }
 
-function insert()
+function getParams()
 {
-    list($db, $prefix) = getLogin();
-    
-    $link = 'none';
     $parent;
-    $subcat = 'none';
-    $cat = 'none';
-    $internal = getInternal();
-    $userid;
+    $now = new DateTime();
+    $params = [
+        'link' => 'none',
+        'parent' => 'none',
+        'subcat' => 'none',
+        'cat' => 'none',
+        'page' => 'none',
+        'internal' => getInternal(),
+        'userid' => 'none',
+        'now_day' => $now->format("j"),
+        'now_month' => $now->format("n"),
+        'now_year' => $now->format("Y")
+    ];
 
     if (!empty($_REQUEST['parent'])) {
+        $params['parent'] = $_REQUEST['parent'];
         $parent = explode("/", $_REQUEST['parent']);
 
         if (!empty($parent[3])) {
-            $cat = $parent[3];
+            $params['cat'] = $parent[3];
         }
 
         if (!empty($parent[4])) {
-            $subcat = $parent[4];
+            $params['subcat'] = $parent[4];
         }
     }
 
     if (!empty($_REQUEST['text'])) {
-        $link = $_REQUEST['text'];
-    } else {
-        $link = 'no link clicked';
+        $params['link'] = $_REQUEST['text'];
     }
 
-    $now = new DateTime();
-    $now_day = $now->format("j");
-    $now_month = $now->format("n");
-    $now_year = $now->format("Y");
-    
     if (isset($_COOKIE['sp_session'])) {
-        $userid = $_COOKIE['sp_session'];
-    } else {
-        $userid = 'none';
+        $params['userid'] = $_COOKIE['sp_session'];
     }
 
-    //check if category already exists and return id or false
+    if (!empty($_REQUEST['page'])) {
+        $params['page'] = $_REQUEST['page'];
+    }
+
+    return $params;
+}
+
+function insertLink()
+{
+    list($db, $prefix) = getLogin();
+    $params = getParams();
+    $link = $params['link'];
+    $parent = $params['parent'];
+    $subcat = $params['subcat'];
+    $cat = $params['cat'];
+    $internal = $params['internal'];
+    $userid = $params['userid'];
+    $now_day = $params['now_day'];
+    $now_month = $params['now_month'];
+    $now_year = $params['now_year'];
+
     $category_id = checkLink($link, $subcat, $cat);
-    //check if practice alrready exists and return id or false
     $practice_id = checkPractice($internal);
-    
-    file_put_contents("tracking.log", "\nCategories:\n Cat: " . $cat . "\n Subcat: " . $subcat . "\n Link: " . $link . "\nIDs:\nCategory_id: " . $category_id . "\nPractice_id: " . $practice_id, FILE_APPEND);
-    
-    //if category_id is /not/ found but the practice /is/ found, insert link as new category
+
     if (($category_id == 'none') && ($practice_id !== 'none')) {
-        file_put_contents("tracking.log", "\n\nInserting new category\n \n --- \n \n", FILE_APPEND);
-        
+        writeToLog("Inserting category");
         $sql = "INSERT into {$prefix}sp_dim_category (category, sub_category, link) VALUES (?, ?, ?)";
         $statement = $db->prepare($sql);
         $statement->bind_param("sss", $cat, $subcat, $link);
@@ -139,9 +152,8 @@ function insert()
         $statement->close();
     }
     
-    //if both category nnd practice are
     if (($category_id !== 'none') && ($practice_id !== 'none') && ($userid !== "none")) {
-        $sql = "INSERT into {$prefix}sp_fact_clicks (category_id, calendar_id, practice_id, time_clicked, user_id) VALUES (?, (SELECT cal.calendar_id FROM {$prefix}sp_dim_calendar cal WHERE cal.day_num = ? AND cal.month_num = ? && cal.year_num = ?), ?, NOW(), ?)";
+        $sql = "INSERT into {$prefix}sp_fact_clicks (category_id, calendar_id, practice_id, time_clicked, user_id) VALUES (?, (SELECT cal.calendar_id FROM {$prefix}sp_dim_calendar cal WHERE cal.day_num = ? AND cal.month_num = ? AND cal.year_num = ?), ?, NOW(), ?)";
         $statement = $db->prepare($sql);
         $statement->bind_param("iiiiis", $category_id, $now_day, $now_month, $now_year, $practice_id, $userid);
         if ($statement->execute()) {
@@ -155,7 +167,50 @@ function insert()
     } else {
         echo "Error";
     }
-    $db->close();
 }
 
-insert();
+function insertExit()
+{
+    list($db, $prefix) = getLogin();
+    $params = getParams();
+    $page = $params['page'];
+    $internal = $params['internal'];
+    $userid = $params['userid'];
+    $now_day = $params['now_day'];
+    $now_month = $params['now_month'];
+    $now_year = $params['now_year'];
+
+    $practice_id = checkPractice($internal);
+
+    if (($page !== 'none') && ($practice_id !== 'none') && ($userid !== "none")) {
+        $sql = "INSERT into {$prefix}sp_fact_exits (page, calendar_id, practice_id, time_exited, user_id) VALUES (?, (SELECT cal.calendar_id FROM {$prefix}sp_dim_calendar cal WHERE cal.day_num = ? AND cal.month_num = ? AND cal.year_num = ?), ?, NOW(), ?)";
+        $statement = $db->prepare($sql);
+        $statement->bind_param("siiiis", $page, $now_day, $now_month, $now_year, $practice_id, $userid);
+        $statement->execute();
+        $statement->close();
+    }
+}
+
+//Only for testing purposes
+function writeToLog(string $content)
+{
+    file_put_contents("tracking.log", "\n" . $content . "\n \n --- \n \n", FILE_APPEND);
+}
+
+if (isset($_REQUEST['link'])) {
+    insertLink();
+    echo "Link is set";
+} else {
+    echo "Link is not set";
+}
+
+if (isset($_REQUEST['exit'])) {
+    insertExit();
+    echo "Exit is set";
+} else {
+    echo "Exit is not set";
+}
+
+if (list($db, $prefix) = getLogin()) {
+    $db->close();
+}
