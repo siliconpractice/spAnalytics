@@ -1,4 +1,6 @@
 <?php
+error_reporting(-1);
+ini_set('display_errors', 'On');
 
 /* PLACE THIS FILE IN THE ROOT (www) DIRECTORY */
 
@@ -34,13 +36,24 @@ function createReport()
     $statement = $db->prepare($sql);
     $statement->execute();
     $result = $statement->get_result();
-    $rows = $result->fetch_all(MYSQLI_ASSOC);
-    
-    for ($row = 0; $row < $rows.length(); $row++) {
-        list($category, $subcategory, $link, $daynum, $monthnum, $yearnum, $listsize, $practice, $shortcode, $ccg, $timeclicked, $user) = $rows[$row];
-        
-        echo "Row " . $row . ": " . $link;
+    // $rows = $result->fetch_all(MYSQLI_ASSOC);
+
+    //var_dump($rows);
+    $rownum = 0;
+
+    while ($row = $result->fetch_assoc()) {
+        echo "<br><br>" . $rownum;
+        echo "<br>Link: " . $row['link'];
+        echo "<br>Practice: " . $row['practice_name'];
+        echo "<br>User Id: " . $row['user_id'];
+        $rownum++;
     }
+
+    // for ($row = 0; $row < $rows.length; $row++) {
+    //     list($category, $subcategory, $link, $daynum, $monthnum, $yearnum, $listsize, $practice, $shortcode, $ccg, $timeclicked, $user) = $rows[$row];
+        
+    //     echo "Row " . $row . ": " . $link;
+    // }
 }
 
 createReport();
