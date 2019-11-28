@@ -36,7 +36,6 @@ function checkLink($link, $subcat, $cat)
     $result = $statement->get_result();
     while ($row = $result->fetch_assoc()) {
         $category_id = $row['category_id'];
-        echo $category_id;
     };
     $statement->close();
     return $category_id;
@@ -53,10 +52,27 @@ function checkPractice($internal)
     $result = $statement->get_result();
     while ($row = $result->fetch_assoc()) {
         $practice_id = $row['practice_id'];
-        echo $practice_id;
     };
     $statement->close();
     return $practice_id;
+}
+
+function checkForm($page)
+{
+    $form_url = explode("/", $page);
+    $form_name = str_replace('-', ' ', $form_url[4]);
+    $form_id = "none";
+    list($db, $prefix) = getLogin();
+    $sql = "SELECT form_id FROM {$prefix}sp_dim_forms WHERE form_name = ? LIMIT 1";
+    $statement = $db->prepare($sql);
+    $statement->bind_param('s', $form_name);
+    $statement->execute();
+    $result = $statement->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $form_id = $row['form_id'];
+    };
+    $statement->close();
+    return $form_id;
 }
 
 function getInternal()
@@ -118,6 +134,10 @@ function getParams()
         $params['page'] = $_REQUEST['page'];
     }
 
+    if (!empty($_REQUEST['formid'])) {
+        $params['formid'] = $_REQUEST['formid'];
+    }
+
     return $params;
 }
 
@@ -139,7 +159,6 @@ function insertLink()
     $practice_id = checkPractice($internal);
 
     if (($category_id == 'none') && ($practice_id !== 'none')) {
-        writeToLog("Inserting category");
         $sql = "INSERT into {$prefix}sp_dim_category (category, sub_category, link) VALUES (?, ?, ?)";
         $statement = $db->prepare($sql);
         $statement->bind_param("sss", $cat, $subcat, $link);
@@ -191,6 +210,42 @@ function insertExit()
     }
 }
 
+function insertAbandoned()
+{
+    list($db, $prefix) = getLogin();
+    $params = getParams();
+    $page = $params['page'];
+    $internal = $params['internal'];
+    $userid = $params['userid'];
+    $now_day = $params['now_day'];
+    $now_month = $params['now_month'];
+    $now_year = $params['now_year'];
+
+    $practice_id = checkPractice($internal);
+    $form_id = checkForm($page);
+
+    if (($form_id == 'none') && ($practice_id !== 'none')) {
+        $sql = "INSERT into {$prefix}sp_dim_forms (form_name) VALUES (?)";
+        $statement = $db->prepare($sql);
+        $statement->bind_param("s", $form_name);
+        if ($statement->execute()) {
+            echo "Success";
+            $form_id = $db->insert_id;
+        } else {
+            echo "Error: " . $db->error;
+        }
+        $statement->close();
+    }
+
+    if (($form_id !== 'none') && ($practice_id !== 'none') && ($userid !== "none")) {
+        $sql = "INSERT into {$prefix}sp_fact_abandoned (form_id, calendar_id, practice_id, time_abandoned, user_id) VALUES (?, (SELECT cal.calendar_id FROM {$prefix}sp_dim_calendar cal WHERE cal.day_num = ? AND cal.month_num = ? AND cal.year_num = ?), ?, NOW(), ?)";
+        $statement = $db->prepare($sql);
+        $statement->bind_param("iiiiis", $form_id, $now_day, $now_month, $now_year, $practice_id, $userid);
+        $statement->execute();
+        $statement->close();
+    }
+}
+
 //Only for testing purposes
 function writeToLog(string $content)
 {
@@ -199,16 +254,14 @@ function writeToLog(string $content)
 
 if (isset($_REQUEST['link'])) {
     insertLink();
-    echo "Link is set";
-} else {
-    echo "Link is not set";
 }
 
 if (isset($_REQUEST['exit'])) {
     insertExit();
-    echo "Exit is set";
-} else {
-    echo "Exit is not set";
+}
+
+if (isset($_REQUEST['form'])) {
+    insertAbandoned();
 }
 
 if (list($db, $prefix) = getLogin()) {

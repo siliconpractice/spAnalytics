@@ -14,9 +14,16 @@ CREATE TABLE charlotter_sp_dim_calendar(calendar_id INT AUTO_INCREMENT PRIMARY K
 
 CREATE TABLE charlotter_sp_dim_practice(practice_id INT AUTO_INCREMENT PRIMARY KEY, practice_name VARCHAR(200), practice_code VARCHAR(10), sp_shortcode VARCHAR(50), list_size INT, start_date DATE, pcn VARCHAR(200), federation VARCHAR(200), ccg VARCHAR(200), stp VARCHAR(200), ics VARCHAR(200));
 
+CREATE TABLE chalotter_sp_dim_forms(form_id INT AUTO_INCREMENT PRIMARY KEY, form_name VARCHAR(200));
+
 CREATE TABLE charlotter_sp_fact_clicks(click_id INT AUTO_INCREMENT PRIMARY KEY, category_id INT, calendar_id INT , practice_id INT, time_clicked TIMESTAMP, user_id VARCHAR(50) NOT NULL);
 
 CREATE TABLE charlotter_sp_fact_exits(exit_id INT AUTO_INCREMENT PRIMARY KEY, page VARCHAR(200), calendar_id INT, practice_id INT, time_exited TIMESTAMP, user_id VARCHAR(50) NOT NULL);
+
+CREATE TABLE charlotter_sp_fact_abandoned(abandoned_id INT AUTO_INCREMENT PRIMARY KEY, form_id INT, calendar_id INT, practice_id INT, time_abandoned TIMESTAMP, user_id VARCHAR(50) NOT NULL);
+
+/* ADD FOREIGN KEY CONSTRAINTS */
+/**/
 
 #STORED PROCEDURE TO POPULATE DATE DIMENSION#
 DELIMITER $$
