@@ -41,6 +41,22 @@ function checkLink($link, $subcat, $cat)
     return $category_id;
 }
 
+function checkPractice($internal)
+{
+    $practice_id = "none";
+    list($db, $prefix) = getLogin();
+    $sql = "SELECT p.practice_id FROM {$prefix}sp_dim_practice p WHERE p.sp_shortcode = ? LIMIT 1";
+    $statement = $db->prepare($sql);
+    $statement->bind_param('s', $internal);
+    $statement->execute();
+    $result = $statement->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $practice_id = $row['practice_id'];
+    };
+    $statement->close();
+    return $practice_id;
+}
+
 function checkForm($form_name)
 {
     $form_id = "none";
@@ -57,6 +73,23 @@ function checkForm($form_name)
     return $form_id;
 }
 
+function getInternal()
+{
+    list($db, $prefix) = getLogin();
+    $sql = "SELECT option_value FROM {$prefix}options WHERE option_name = 'spm_multisite'";
+    $result = $db->query($sql);
+    $rows = $result->fetch_array();
+    $result->close();
+
+    $a = stripos($rows[0], '"internalcode"') + strlen('"internalcode"');
+    $b = stripos($rows[0], '"', $a) +1;
+    $c = stripos($rows[0], '"', $b);
+    $length = $c - $b;
+    $internal = substr($rows[0], $b, $length);
+
+    return $internal;
+}
+
 function getParams()
 {
     $parent;
@@ -68,7 +101,11 @@ function getParams()
         'cat' => 'none',
         'page' => 'none',
         'form_name' => 'none',
-        'userid' => 'none'
+        'internal' => getInternal(),
+        'userid' => 'none',
+        'now_day' => $now->format("j"),
+        'now_month' => $now->format("n"),
+        'now_year' => $now->format("Y")
     ];
 
     if (!empty($_REQUEST['parent'])) {
@@ -113,11 +150,16 @@ function insertLink()
     $parent = $params['parent'];
     $subcat = $params['subcat'];
     $cat = $params['cat'];
+    $internal = $params['internal'];
     $userid = $params['userid'];
+    $now_day = $params['now_day'];
+    $now_month = $params['now_month'];
+    $now_year = $params['now_year'];
 
     $category_id = checkLink($link, $subcat, $cat);
+    $practice_id = checkPractice($internal);
 
-    if (($category_id == 'none')) {
+    if (($category_id == 'none') && ($practice_id !== 'none')) {
         $sql = "INSERT into {$prefix}sp_dim_category (category, sub_category, link) VALUES (?, ?, ?)";
         $statement = $db->prepare($sql);
         $statement->bind_param("sss", $cat, $subcat, $link);
@@ -130,16 +172,18 @@ function insertLink()
         $statement->close();
     }
     
-    if (($category_id !== 'none') && ($userid !== "none")) {
-        $sql = "INSERT into {$prefix}sp_fact_clicks (category_id, time_clicked, user_id) VALUES (?, NOW(), ?)";
+    if (($category_id !== 'none') && ($practice_id !== 'none') && ($userid !== "none")) {
+        $sql = "INSERT into {$prefix}sp_fact_clicks (category_id, calendar_id, practice_id, time_clicked, user_id) VALUES (?, (SELECT cal.calendar_id FROM {$prefix}sp_dim_calendar cal WHERE cal.day_num = ? AND cal.month_num = ? AND cal.year_num = ?), ?, NOW(), ?)";
         $statement = $db->prepare($sql);
-        $statement->bind_param("is", $category_id, $userid);
+        $statement->bind_param("iiiiis", $category_id, $now_day, $now_month, $now_year, $practice_id, $userid);
         if ($statement->execute()) {
             echo "Success";
         } else {
             echo "Error: " . $db->error;
         }
         $statement->close();
+    } else if ($practice_id == 'none') {
+        echo "Practice not found. Please add practice to stats database.";
     } else {
         echo "Error";
     }
@@ -150,12 +194,18 @@ function insertExit()
     list($db, $prefix) = getLogin();
     $params = getParams();
     $page = $params['page'];
+    $internal = $params['internal'];
     $userid = $params['userid'];
+    $now_day = $params['now_day'];
+    $now_month = $params['now_month'];
+    $now_year = $params['now_year'];
 
-    if (($page !== 'none') && ($userid !== "none")) {
-        $sql = "INSERT into {$prefix}sp_fact_exits (page, time_exited, user_id) VALUES (?, NOW(), ?)";
+    $practice_id = checkPractice($internal);
+
+    if (($page !== 'none') && ($practice_id !== 'none') && ($userid !== "none")) {
+        $sql = "INSERT into {$prefix}sp_fact_exits (page, calendar_id, practice_id, time_exited, user_id) VALUES (?, (SELECT cal.calendar_id FROM {$prefix}sp_dim_calendar cal WHERE cal.day_num = ? AND cal.month_num = ? AND cal.year_num = ?), ?, NOW(), ?)";
         $statement = $db->prepare($sql);
-        $statement->bind_param("ss", $page, $userid);
+        $statement->bind_param("siiiis", $page, $now_day, $now_month, $now_year, $practice_id, $userid);
         $statement->execute();
         $statement->close();
     }
@@ -166,12 +216,17 @@ function insertAbandoned()
     list($db, $prefix) = getLogin();
     $params = getParams();
     $page = $params['page'];
+    $internal = $params['internal'];
     $userid = $params['userid'];
     $form_name = $params['form_name'];
+    $now_day = $params['now_day'];
+    $now_month = $params['now_month'];
+    $now_year = $params['now_year'];
 
+    $practice_id = checkPractice($internal);
     $form_id = checkForm($form_name);
 
-    if (($form_id == 'none')) {
+    if (($form_id == 'none') && ($practice_id !== 'none')) {
         $sql = "INSERT into {$prefix}sp_dim_forms (form_name) VALUES (?)";
         $statement = $db->prepare($sql);
         $statement->bind_param("s", $form_name);
@@ -184,10 +239,10 @@ function insertAbandoned()
         $statement->close();
     }
 
-    if (($form_id !== 'none') && ($userid !== "none")) {
-        $sql = "INSERT into {$prefix}sp_fact_abandoned (form_id, time_abandoned, user_id) VALUES (?, NOW(), ?)";
+    if (($form_id !== 'none') && ($practice_id !== 'none') && ($userid !== "none")) {
+        $sql = "INSERT into {$prefix}sp_fact_abandoned (form_id, calendar_id, practice_id, time_abandoned, user_id) VALUES (?, (SELECT cal.calendar_id FROM {$prefix}sp_dim_calendar cal WHERE cal.day_num = ? AND cal.month_num = ? AND cal.year_num = ?), ?, NOW(), ?)";
         $statement = $db->prepare($sql);
-        $statement->bind_param("is", $form_id, $userid);
+        $statement->bind_param("iiiiis", $form_id, $now_day, $now_month, $now_year, $practice_id, $userid);
         $statement->execute();
         $statement->close();
     }
