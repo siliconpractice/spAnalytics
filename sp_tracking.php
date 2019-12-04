@@ -59,61 +59,67 @@ function checkForm($form_name)
 
 function getParams()
 {
-    $parent;
-    $now = new DateTime();
-    $params = [
-        'link' => 'none',
-        'parent' => 'none',
-        'subcat' => 'none',
-        'cat' => 'none',
-        'page' => 'none',
-        'form_name' => 'none',
-        'userid' => 'none'
-    ];
-
-    if (!empty($_REQUEST['parent'])) {
-        $params['parent'] = $_REQUEST['parent'];
-        $parent = explode("/", $_REQUEST['parent']);
-
-        if (!empty($parent[3])) {
-            $params['cat'] = $parent[3];
-        }
-
-        if (!empty($parent[4])) {
-            $params['subcat'] = $parent[4];
-        }
-    }
-
-    if (!empty($_REQUEST['text'])) {
-        $params['link'] = $_REQUEST['text'];
-    }
-
-    if (isset($_COOKIE['sp_session'])) {
-        $params['userid'] = $_COOKIE['sp_session'];
-    }
-
-    if (!empty($_REQUEST['page'])) {
-        $params['page'] = $_REQUEST['page'];
-        $form_url = explode("/", $params['page']);
-        $params['form_name'] = str_replace('-', ' ', $form_url[4]);
-    }
-
-    if (!empty($_REQUEST['formid'])) {
-        $params['formid'] = $_REQUEST['formid'];
-    }
-
+    $params['userid'] = $_COOKIE['sp_session'];
+    $params['page'] = $_REQUEST['page'];
     return $params;
+}
+
+function getInternal($page)
+{
+    $explode = explode("/", $page);
+    $url = $explode[2];
+    writeToLog("In the getInternal function, Page is " . $page . "and url is " . $url);
+    list($db, $prefix) = getLogin();
+    $sql = "SELECT option_value FROM {$prefix}options WHERE option_name = 'spm_multisite'";
+    $result = $db->query($sql);
+    $rows = $result->fetch_array();
+    $result->close();
+
+    $offest = 0;
+
+    while ($offest !== false) {
+        $a = stripos($rows[0], '"internalcode"') + strlen('"internalcode"');
+        $b = stripos($rows[0], '"', $a) +1;
+        $c = stripos($rows[0], '"', $b);
+
+        $d = stripos($rows[0], '"domain"') + strlen('"domain"');
+        $e = stripos($rows[0], '"', $d) +1;
+        $f = stripos($rows[0], '"', $e);
+
+        $domain = substr($rows[0], $e, $f - $e);
+        $internal = substr($rows[0], $b, $c - $b);
+
+        writeToLog("Domain:" . $domain . "\n Internal code: " . $internal);
+        if ($domain == $url) {
+            writeToLog('Domain equals url');
+            return $internal;
+        }
+        
+        $offset = $f+1;
+    }
 }
 
 function insertLink()
 {
     list($db, $prefix) = getLogin();
     $params = getParams();
-    $link = $params['link'];
-    $parent = $params['parent'];
-    $subcat = $params['subcat'];
-    $cat = $params['cat'];
+    $page = $params['page'];
     $userid = $params['userid'];
+    $link = $_REQUEST['text'];
+    $parent = explode("/", $page);
+    $internal = getInternal($page);
+
+    if (!empty($parent[3])) {
+        $cat = $parent[3];
+    } else {
+        $cat = 'none';
+    }
+
+    if (!empty($parent[4])) {
+        $subcat = $parent[4];
+    } else {
+        $subcat = 'none';
+    }
 
     $category_id = checkLink($link, $subcat, $cat);
 
@@ -131,9 +137,9 @@ function insertLink()
     }
     
     if (($category_id !== 'none') && ($userid !== "none")) {
-        $sql = "INSERT into {$prefix}sp_fact_clicks (category_id, time_clicked, user_id) VALUES (?, NOW(), ?)";
+        $sql = "INSERT into {$prefix}sp_fact_clicks (category_id, time_clicked, user_id, internal_code) VALUES (?, NOW(), ?, ?)";
         $statement = $db->prepare($sql);
-        $statement->bind_param("is", $category_id, $userid);
+        $statement->bind_param("iss", $category_id, $userid, $internal);
         if ($statement->execute()) {
             echo "Success";
         } else {
@@ -151,11 +157,12 @@ function insertExit()
     $params = getParams();
     $page = $params['page'];
     $userid = $params['userid'];
+    $internal = getInternal($page);
 
     if (($page !== 'none') && ($userid !== "none")) {
-        $sql = "INSERT into {$prefix}sp_fact_exits (page, time_exited, user_id) VALUES (?, NOW(), ?)";
+        $sql = "INSERT into {$prefix}sp_fact_exits (page, time_exited, user_id, internal_code) VALUES (?, NOW(), ?, ?)";
         $statement = $db->prepare($sql);
-        $statement->bind_param("ss", $page, $userid);
+        $statement->bind_param("sss", $page, $userid, $internal);
         $statement->execute();
         $statement->close();
     }
@@ -167,8 +174,9 @@ function insertAbandoned()
     $params = getParams();
     $page = $params['page'];
     $userid = $params['userid'];
-    $form_name = $params['form_name'];
-
+    $form_url = explode("/", $page);
+    $form_name = str_replace('-', ' ', $form_url[4]);
+    $internal = getInternal($page);
     $form_id = checkForm($form_name);
 
     if (($form_id == 'none')) {
@@ -185,9 +193,9 @@ function insertAbandoned()
     }
 
     if (($form_id !== 'none') && ($userid !== "none")) {
-        $sql = "INSERT into {$prefix}sp_fact_abandoned (form_id, time_abandoned, user_id) VALUES (?, NOW(), ?)";
+        $sql = "INSERT into {$prefix}sp_fact_abandoned (form_id, time_abandoned, user_id, internal_code) VALUES (?, NOW(), ?, ?)";
         $statement = $db->prepare($sql);
-        $statement->bind_param("is", $form_id, $userid);
+        $statement->bind_param("iss", $form_id, $userid, $internal);
         $statement->execute();
         $statement->close();
     }

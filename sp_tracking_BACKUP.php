@@ -73,6 +73,7 @@ function checkForm($form_name)
     return $form_id;
 }
 
+/* for each INSTANCE of '"internalcode"', get corresponding code. */
 function getInternal()
 {
     list($db, $prefix) = getLogin();
@@ -81,11 +82,33 @@ function getInternal()
     $rows = $result->fetch_array();
     $result->close();
 
-    $a = stripos($rows[0], '"internalcode"') + strlen('"internalcode"');
-    $b = stripos($rows[0], '"', $a) +1;
-    $c = stripos($rows[0], '"', $b);
-    $length = $c - $b;
-    $internal = substr($rows[0], $b, $length);
+    $offest = 0;
+    $search = array();
+    // array.push({
+    //     "internal" => $internal,
+    //     "domain" => $domain
+    //     });
+
+    while ($offest !== false) {
+        $a = stripos($rows[0], '"internalcode"') + strlen('"internalcode"'); //finds first instance of "internalcode" and adds the length
+        $b = stripos($rows[0], '"', $a) +1; //finds position of the first quote (") after the instance of "internalcode" (the value of internal)
+        $c = stripos($rows[0], '"', $b); //finds position of next quotation mark (")
+        $length = $c - $b; //gets length of string between found quotes
+        $internal = substr($rows[0], $b, $length); //gets string between found quotes
+        $offset = $c+1;
+    }
+
+
+
+
+    $a = stripos($rows[0], '"internalcode"') + strlen('"internalcode"'); //finds first instance of "internalcode" and adds the length
+    $b = stripos($rows[0], '"', $a) +1; //finds position of the first quote (") after the instance of "internalcode" (the value of internal)
+    $c = stripos($rows[0], '"', $b); //finds position of next quotation mark (")
+    $length = $c - $b; //gets length of string between found quotes
+    $internal = substr($rows[0], $b, $length); //gets string between found quotes
+
+
+
 
     return $internal;
 }

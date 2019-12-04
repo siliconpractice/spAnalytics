@@ -49,12 +49,12 @@ function checkInternal(elementToTest) {
   return(elementToTest.host === window.location.host);
 }
 
-function sendStats(link, parent) {
+function sendStats(link, page) {
     jQuery.ajax({
         url: "/sp_tracking.php",
         data: {
             text: link, //either form name or link text
-            parent: parent,
+            page: page,
             link: true
         }
     });
