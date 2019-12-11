@@ -66,37 +66,28 @@ function getParams()
 
 function getInternal($page)
 {
-    $explode = explode("/", $page);
-    $url = $explode[2];
-    writeToLog("In the getInternal function, Page is " . $page . "and url is " . $url);
+    $internal = 'none';
+    $url_explode = explode("/", $page);
+    $url = $url_explode[2];
     list($db, $prefix) = getLogin();
     $sql = "SELECT option_value FROM {$prefix}options WHERE option_name = 'spm_multisite'";
     $result = $db->query($sql);
     $rows = $result->fetch_array();
     $result->close();
 
-    $offest = 0;
+    if (isset($rows[0])) {
+        $options = unserialize($rows[0]);
 
-    while ($offest !== false) {
-        $a = stripos($rows[0], '"internalcode"') + strlen('"internalcode"');
-        $b = stripos($rows[0], '"', $a) +1;
-        $c = stripos($rows[0], '"', $b);
-
-        $d = stripos($rows[0], '"domain"') + strlen('"domain"');
-        $e = stripos($rows[0], '"', $d) +1;
-        $f = stripos($rows[0], '"', $e);
-
-        $domain = substr($rows[0], $e, $f - $e);
-        $internal = substr($rows[0], $b, $c - $b);
-
-        writeToLog("Domain:" . $domain . "\n Internal code: " . $internal);
-        if ($domain == $url) {
-            writeToLog('Domain equals url');
-            return $internal;
+        foreach ($options as $option) {
+            foreach ($option as $site) {
+                if ($site['domain'] == $url) {
+                    $internal = $site['internalcode'];
+                }
+            }
         }
-        
-        $offset = $f+1;
     }
+
+    return $internal;
 }
 
 function insertLink()
@@ -136,7 +127,7 @@ function insertLink()
         $statement->close();
     }
     
-    if (($category_id !== 'none') && ($userid !== "none")) {
+    if (($category_id !== 'none') && ($userid !== "none") && ($internal !== 'none')) {
         $sql = "INSERT into {$prefix}sp_fact_clicks (category_id, time_clicked, user_id, internal_code) VALUES (?, NOW(), ?, ?)";
         $statement = $db->prepare($sql);
         $statement->bind_param("iss", $category_id, $userid, $internal);
@@ -159,7 +150,7 @@ function insertExit()
     $userid = $params['userid'];
     $internal = getInternal($page);
 
-    if (($page !== 'none') && ($userid !== "none")) {
+    if (($page !== 'none') && ($userid !== "none") && ($internal !== 'none')) {
         $sql = "INSERT into {$prefix}sp_fact_exits (page, time_exited, user_id, internal_code) VALUES (?, NOW(), ?, ?)";
         $statement = $db->prepare($sql);
         $statement->bind_param("sss", $page, $userid, $internal);
@@ -192,7 +183,7 @@ function insertAbandoned()
         $statement->close();
     }
 
-    if (($form_id !== 'none') && ($userid !== "none")) {
+    if (($form_id !== 'none') && ($userid !== 'none') && ($internal !== 'none')) {
         $sql = "INSERT into {$prefix}sp_fact_abandoned (form_id, time_abandoned, user_id, internal_code) VALUES (?, NOW(), ?, ?)";
         $statement = $db->prepare($sql);
         $statement->bind_param("iss", $form_id, $userid, $internal);
@@ -222,3 +213,9 @@ if (isset($_REQUEST['form'])) {
 if (list($db, $prefix) = getLogin()) {
     $db->close();
 }
+
+
+
+// Cleaned up all files
+// Simplified database structure to remove BI dimensions which aren't necessary for plugin
+// sp_tracking now adds internal code
